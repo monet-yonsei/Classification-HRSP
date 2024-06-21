@@ -44,7 +44,7 @@ end
 
 option = [];
 option.number_of_task = 2;
-option.divide_task    = 'no';
+option.divide         = 'no';
 option.individual_ICA = 'no';
 
 for sub = 1:number_of_subject
