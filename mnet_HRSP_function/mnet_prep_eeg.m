@@ -61,7 +61,8 @@ if option.number_of_task == 2
       Sound_event = [event.store.events.soundOn;event.store.events.soundOff];
       Task_event  = [Heart_event Sound_event];
       Task_event  = sort(Task_event,2);
-      EEG         = pop_select(EEG,'time',Task_event');
+      EEG         = pop_select(EEG_Prep,'time',Task_event');
+      ECG         = pop_select(ECG,'time',Task_event');
       
       % Do individual ICA
       if strcmp(option.individual_ICA,'yes')
@@ -69,9 +70,11 @@ if option.number_of_task == 2
          EEG = iclabel(EEG,'default');
          EEG = eeg_checkset(EEG,'ica');
          varargout{1} = EEG;
+         varargout{2} = ECG;
       else
          % Undo individual ICA 
          varargout{1} = EEG;
+         varargout{2} = ECG;
       end
    end
 
