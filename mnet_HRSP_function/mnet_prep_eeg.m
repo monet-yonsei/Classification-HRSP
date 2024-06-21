@@ -9,14 +9,14 @@ function varargout = mnet_prep_eeg(EEG,event,option)
 %   ex) binary experimental data
 %   option = [];
 %   option.number_of_task = 2;
-%   option.divide_task    = 'yes';
+%   option.divide         = 'yes';
 %   option.individual_ICA = [];
 %   [Heart_EEG,Sound_EEG,Heart_ECG,Sound_ECG] = mnet_prep_eeg(EEG,event,option)
 %
 %   ex) four state experimental data 
 %   option = [];
 %   option.number_of_task = 4;
-%   option.divide_task    = 'yes';
+%   option.divide         = 'yes';
 %   option.individual_ICA = [];
 %   [Heart_EEG,Sound_EEG,Heart_ECG,Sound_ECG] = mnet_prep_eeg(EEG,event,option)
 % -------------------------------------------------------------------------
@@ -83,48 +83,54 @@ if option.number_of_task == 2
 
 elseif option.number_of_task == 4
 
-    % Preprocess four-state experimental data
-    if EEG.nbchan == 64
-       [EEG,ECG] = mnet_prep_four_state(EEG,0,[]);
-    else
-       if isempty(option.Orig_EEG)
-          error("For interpolating, use prior preprocessed EEG's channel location")
+       % Preprocess four-state experimental data
+       if EEG.nbchan == 64
+          [EEG,ECG] = mnet_prep_four(EEG,0,[]);
+       else
+          if isempty(option.Orig_EEG)
+             error("For interpolating, use prior preprocessed EEG's channel location")
+          end
+          % Interpolate missing channel
+          [EEG,ECG] = mnet_prep_four(EEG,1,option);
        end
-       % Interpolate missing channel
-       [EEG,ECG] = mnet_prep_four_state(EEG,1,option.Orig_EEG);
-    end
+               
+       % Divide EEG with task
+       [EEG_prep,ECG_prep] = mnet_divide_task(EEG,ECG);
        
-    % Divide EEG with task
-    [EEG_prep,ECG_prep] = mnet_divide_task(EEG,ECG);
-   
-    % Detect R peaks each divided ECG
-    for i = 1:20
-        ECG_prep{1,i} = mnet_detect_rpeaks(ECG_prep{1,i});
-        EEG_prep{1,i}.event = ECG_prep{1,i}.event;
-    end
-
-    varargout{1} = EEG_prep;
-    varargout{2} = ECG_prep;
-
-    if strcmp(option.ICA_option,'yes')
-       Merged_EEG = eeg_emptyset();
-       Merged_EEG = EEG_prep{1,1};
-       Merged_EEG = pop_rmbase(Merged_EEG,[],[]);
-       for i = 2:20
-           Plus_EEG = EEG_prep{1,i};
-           Plus_EEG = pop_rmbase(Plus_EEG,[],[]);
-           Merged_EEG = pop_mergeset(Merged_EEG,Plus_EEG);
-       end       
-       if strcmp(option.individual_ICA,'yes')            
-          Merged_EEG = pop_runica(Merged_EEG,'runica');
-          Merged_EEG = iclabel(Merged_EEG,'default');
-          Merged_EEG = eeg_checkset(Merged_EEG,'ica');
-          varargout{1} = Merged_EEG;    
-       else % For GroupICA    
-          varargout{1} = Merged_EEG;   
+       % Detect R peaks each divided ECG
+       for i = 1:20
+           ECG_prep{1,i} = mnet_detect_rpeaks(ECG_prep{1,i});
+           EEG_prep{1,i}.event = ECG_prep{1,i}.event;
        end
-    end
-else
-    error('Number of Task is not appropriate')
+
+       if isempty(option.ICA_option)
+          varargout{1} = EEG_prep;
+          varargout{2} = ECG_prep;
+       else
+           if strcmp(option.ICA_option,'yes')
+               Merged_EEG = eeg_emptyset();
+               Merged_EEG = EEG_prep{1,1};
+               Merged_EEG.event   = [];
+               Merged_EEG.urevent = [];
+               Merged_EEG = pop_rmbase(Merged_EEG,[],[]);
+               for i = 2:20
+                   Plus_EEG = EEG_prep{1,i};
+                   Plus_EEG.event   = [];
+                   Plus_EEG.urevent = [];
+                   Plus_EEG = pop_rmbase(Plus_EEG,[],[]);
+                   Merged_EEG = pop_mergeset(Merged_EEG,Plus_EEG);
+               end       
+               if strcmp(option.individual_ICA,'yes')            
+                  Merged_EEG   = pop_runica(Merged_EEG,'runica');
+                  Merged_EEG   = iclabel(Merged_EEG,'default');
+                  Merged_EEG   = eeg_checkset(Merged_EEG,'ica');
+                  varargout{1} = Merged_EEG;    
+               else    
+                  varargout{1} = Merged_EEG;   
+               end
+           else
+              error('error with appropriate option')
+           end
+       end
 end
 end
